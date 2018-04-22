@@ -1,0 +1,32 @@
+{
+  "marker" : {
+    "size" : 40,
+    "nFrame" : 3
+  },
+  "marker_pc" : {
+    "offset_x" : 42,
+    "offset_y" : 44,
+    "width"    : 70,
+    "height"   : 56
+  },
+  "marker_min" : {
+    "offset_x" : -26,
+    "offset_y" :  75,
+    "width"    : 100,
+    "height"   :  56
+  },
+  "capture" : {
+    "cam_port" : 0,
+    "cam_width"  : 1280,
+    "cam_height" : 1024,
+    "frames_skip"    : 3,
+    "frames_capture" : 2
+  },
+  "notify" : {
+    "interval_sec" : 180,
+    "max_count" : 1
+  },
+  "ifttt" : {
+    "url" : "https://maker.ifttt.com/trigger/{event_name}/with/key/{key}"
+  }
+}
