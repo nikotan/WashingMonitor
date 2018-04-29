@@ -125,7 +125,7 @@ def getBoundary(img):
 #   返り値：-1=マーカ未発見、0=洗濯非終了、1=洗濯終了
 def isFinished(img):
   if img is None:
-    return -1, img
+    return -1, img, 0.0
   else:
     x0, y0, x1, y1, th = getBoundary(img)
     img_blur = cv2.GaussianBlur(img,(5,5),0)
@@ -136,8 +136,8 @@ def isFinished(img):
       cv2.imwrite('debug_msk_bin.jpg', msk_bin)
       print("th = %s, th_msk = %s" % (th, th_msk))
     
-    if th_msk < 50.0:
-      th_msk = 50.0
+    if th_msk < 80.0:
+      th_msk = 80.0
     ratio = np.sum(msk_blur > th_msk) * 1.0 / msk_blur.size
     if IS_DEBUG:
       print("--> th_msk = %s" % (th_msk))
@@ -148,14 +148,15 @@ def isFinished(img):
     cv2.putText(tmp, "%2.2f" % (ratio), (x0, y1), cv2.FONT_HERSHEY_PLAIN, 1.0, (0,0,255))
 
     if ratio > 0.2:
-      return 1, tmp
+      return 1, tmp, ratio
     else:
-      return 0, tmp
+      return 0, tmp, ratio
 
 
 # iftttでイベント送信
-def sendIftttEvent():
-  obj = {"value1" : "洗濯が終わっています"}
+def sendIftttEvent(ratio):
+  value = "%0.2f" % (ratio)
+  obj = {"value1" : value}
   json_data = json.dumps(obj).encode("utf-8")
   
   data = urllib.urlencode(obj);
@@ -204,7 +205,7 @@ if __name__ == "__main__":
     cv2.imwrite('log_patch_min.jpg', patch_min)
 
   # 洗濯終了を判定
-  finished, patch_pc_b = isFinished(patch_pc)
+  finished, patch_pc_b, ratio = isFinished(patch_pc)
   if patch_pc_b is not None:
     cv2.imwrite('log_patch_pc_b.jpg', patch_pc_b)
   
@@ -218,7 +219,7 @@ if __name__ == "__main__":
   if finished == 1:
     if log['count'] == -1:
       if IS_DEBUG is False:
-        sendIftttEvent()
+        sendIftttEvent(ratio)
       log['datetime'] = now_dt
       log['unixtime'] = now_ut
       log['count'] = 1
@@ -226,7 +227,7 @@ if __name__ == "__main__":
       dsec = now_ut - log['unixtime']
       dsec_th = log['count'] * param['notify']['interval_sec']
       if log['count'] < param['notify']['max_count'] and dsec > dsec_th:
-        sendIftttEvent()
+        sendIftttEvent(ratio)
         log['count'] = 1 + dsec / param['notify']['interval_sec']
     shutil.copy('log_image.jpg', 'log/%s.jpg' % (now_fn))
     shutil.copy('log_patch_pc.jpg', 'log/%s_pc.jpg' % (now_fn))
