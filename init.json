@@ -1,9 +1,7 @@
 {
   "marker" : {
     "size" : 40,
-    "nFrame" : 2
-  },
-  "marker_pc" : {
+    "nFrame" : 2,
     "offset_x" : -54,
     "offset_y" : 27,
     "width"    : 40,
@@ -15,6 +13,11 @@
     "cam_height" : 1024,
     "frames_skip"    : 3,
     "frames_capture" : 2
+  },
+  "basis" : {
+    "debug" : 0,
+    "th_pixel" : 230,
+    "th_score" : 0.1
   },
   "ifttt" : {
     "url" : "https://maker.ifttt.com/trigger/{event_name}/with/key/{key}"

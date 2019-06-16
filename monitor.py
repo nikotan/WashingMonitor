@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-import shutil
 import json
 import urllib.parse
 import urllib.request
 from datetime import datetime
 import cv2
 import numpy as np
-
-IS_DEBUG = False
 
 
 # USBカメラからカラー画像を取得
@@ -46,13 +43,11 @@ def cropPatchImages(img, param):
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
     corners, ids, rejectedImgPoints = aruco.detectMarkers(img, dictionary)
 
-    if IS_DEBUG:
-        img_marker = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        aruco.drawDetectedMarkers(img_marker, corners, ids, (0, 255, 0))
-        cv2.imwrite('debug_marker.jpg', img_marker)
+    img_marker = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    aruco.drawDetectedMarkers(img_marker, corners, ids, (0, 255, 0))
+    cv2.imwrite('log_marker.jpg', img_marker)
 
-    patch_pc = None
-    patch_min = None
+    patch = None
 
     if ids is not None:
         sMkr = param['marker']['size']
@@ -70,34 +65,34 @@ def cropPatchImages(img, param):
             M = cv2.getPerspectiveTransform(pts1, pts2)
             dst = cv2.warpPerspective(img, M, (sOut, sOut))
 
-            # 終了判定用マーカー
+            # 終了判定用マーカー(ID=0)
             if mid[0] == 0:
                 # マーカ座標を基準に7セグLED領域を切り出し
-                patch_x = sFrm + param['marker_pc']['offset_x']
-                patch_y = sFrm + param['marker_pc']['offset_y']
-                patch_pc = dst[
-                    patch_y: patch_y + param['marker_pc']['height'],
-                    patch_x: patch_x + param['marker_pc']['width']
+                patch_x = sFrm + param['marker']['offset_x']
+                patch_y = sFrm + param['marker']['offset_y']
+                patch = dst[
+                    patch_y: patch_y + param['marker']['height'],
+                    patch_x: patch_x + param['marker']['width']
                 ]
 
-    return patch_pc
+    return patch
 
 
 # 画像パッチから電源状態判定(輝度が大きい場合には電源ONと判定)
 #   imgはグレースケール(dtype=uint8)
 #   返り値：-1=マーカ未発見、0=輝度小(電源OFF)、1=輝度大(電源ON)
-def isPowerOn(img):
+def isPowerOn(img, param):
     if img is None:
         return -1, img, 0.0
     else:
         h, w = img.shape[:2]
         #img_blur = cv2.GaussianBlur(img,(5,5),0)
-        ratio = np.sum(img > 128) * 1.0 / img.size
+        ratio = np.sum(img > param['basis']['th_pixel']) * 1.0 / img.size
         tmp = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         cv2.putText(tmp, "%2.2f" % (ratio), (1, h-1),
                     cv2.FONT_HERSHEY_PLAIN, 1.0, (0, 0, 255))
 
-        if ratio > 0.2:
+        if ratio > param['basis']['th_score']:
             return 1, tmp, ratio
         else:
             return 0, tmp, ratio
@@ -150,14 +145,11 @@ if __name__ == "__main__":
     gray = np.uint8(gray)
 
     # 7セグLED領域矩形を取得
-    patch_pc = cropPatchImages(gray, param)
-    if patch_pc is not None:
-        cv2.imwrite('log_patch_pc.jpg', patch_pc)
-
+    patch = cropPatchImages(gray, param)
     # 洗濯機の電源状態を判定
-    powerOn, patch_pc_b, ratio = isPowerOn(patch_pc)
-    if patch_pc_b is not None:
-        cv2.imwrite('log_patch_pc_b.jpg', patch_pc_b)
+    powerOn, patch, ratio = isPowerOn(patch, param)
+    if patch is not None:
+        cv2.imwrite('log_patch.jpg', patch)
 
     # 現在時刻を取得
     now = datetime.now()
@@ -168,7 +160,7 @@ if __name__ == "__main__":
     # 終了判定結果に基づいて通知
     if powerOn == 0:
         if log['powerOn'] == 1:
-            if IS_DEBUG is False:
+            if param['basis']['debug'] == 0:
                 sendIftttEvent(ratio, log['ratio'])
         log['powerOn'] = 0
     elif powerOn == 1:
