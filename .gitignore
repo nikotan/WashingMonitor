@@ -1,0 +1,6 @@
+.DS_Store
+.python-version
+log
+log.json
+*.jpg
+*.png
