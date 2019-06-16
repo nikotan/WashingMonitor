@@ -1,6 +1,6 @@
 .DS_Store
-.python-version
-log
+venv/
+log/
 log.json
 *.jpg
 *.png
